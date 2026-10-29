@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>St. Joseph Rush: The 7:50 Mission</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #111;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 500px;
+            height: 600px;
+            background: #2c3e50;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #27ae60;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,255,0,0.3);
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB, #f1c40f);
+        }
+        .ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            text-shadow: 1px 1px #fff;
+            pointer-events: none;
+        }
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+        }
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px #1e8449;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin-bottom: 10px; color: #f1c40f;">St. Joseph Rush: Farmgate to College</h2>
+    
+    <div id="game-container">
+        <div class="ui-panel">
+            <span id="score-text">Distance: 0m</span>
+            <span id="time-text">⏰ 7:00 AM</span>
+        </div>
+        <canvas id="gameCanvas" width="500" height="600"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="jump()">Jump (লাফ দাও)</button>
+        <button class="btn" style="background: #e74c3c; box-shadow: 0 4px #c0392b;" onclick="duck()">Science Talk (চাপ কমাও)</button>
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let score = 0;
+    let isGameOver = false;
+
+    // Player (Josephite Student)
+    let player = {
+        x: 50,
+        y: 450,
+        width: 30,
+        height: 50,
+        dy: 0,
+        jumpForce: -12,
+        gravity: 0.6,
+        grounded: true,
+        color: "#2980b9"
+    };
+
+    // Obstacles (Leguna / Rickshaw / Inspector)
+    let obstacles = [];
+    let gameSpeed = 4;
+    let frameCount = 0;
+
+    function jump() {
+        if (player.grounded && !isGameOver) {
+            player.dy = player.jumpForce;
+            player.grounded = false;
+        }
+        if (isGameOver) {
+            resetGame();
+        }
+    }
+
+    function duck() {
+        // Science dialogue trigger or mini boost
+        score += 10;
+    }
+
+    // Keyboard controls
+    window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.code === "ArrowUp") {
+            jump();
+        }
+    });
+
+    function spawnObstacle() {
+        let types = ["leguna", "rickshaw", "sargeant"];
+        let type = types[Math.floor(Math.random() * types.length)];
+        
+        obstacles.push({
+            x: canvas.width,
+            y: 460,
+            width: 40,
+            height: 40,
+            type: type,
+            color: type === "leguna" ? "#c0392b" : (type === "rickshaw" ? "#d35400" : "#8e44ad")
+        });
+    }
+
+    function update() {
+        if (isGameOver) return;
+
+        // Player physics
+        player.dy += player.gravity;
+        player.y += player.dy;
+
+        if (player.y > 450) {
+            player.y = 450;
+            player.dy = 0;
+            player.grounded = true;
+        }
+
+        // Obstacles movement
+        if (frameCount % 120 === 0) {
+            spawnObstacle();
+        }
+
+        obstacles.forEach((obs, index) => {
+            obs.x -= gameSpeed;
+
+            // Collision detection
+            if (
+                player.x < obs.x + obs.width &&
+                player.x + player.width > obs.x &&
+                player.y < obs.y + obs.height &&
+                player.y + player.height > obs.y
+            ) {
+                isGameOver = true;
+            }
+
+            // Remove out of screen
+            if (obs.x + obs.width < 0) {
+                obstacles.splice(index, 1);
+                score += 20;
+                gameSpeed += 0.1; // Speed up gradually
+            }
+        });
+
+        frameCount++;
+        score += 1;
+        document.getElementById("score-text").innerText = `Distance: ${score}m`;
+    }
+
+    function draw() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Road / Dhaka Ground
+        ctx.fillStyle = "#34495e";
+        ctx.fillRect(0, 500, canvas.width, 100);
+
+        // Draw Road line
+        ctx.strokeStyle = "#f1c40f";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(0, 550);
+        ctx.lineTo(canvas.width, 550);
+        ctx.stroke();
+
+        // Draw Player (Josephite)
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        // Head
+        ctx.fillStyle = "#f5b041";
+        ctx.beginPath();
+        ctx.arc(player.x + 15, player.y - 10, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Obstacles
+        obstacles.forEach(obs => {
+            ctx.fillStyle = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        });
+
+        // Game Over Text
+        if (isGameOver) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#e74c3c";
+            ctx.font = "bold 28px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("LATE HOYE GESE! 💀", canvas.width / 2, canvas.height / 2 - 20);
+
+            ctx.fillStyle = "#fff";
+            ctx.font = "16px Arial";
+            ctx.fillText("Gate bondh! abar try koro.", canvas.width / 2, canvas.height / 2 + 20);
+            
+            ctx.fillStyle = "#27ae60";
+            ctx.font = "bold 18px Arial";
+            ctx.fillText("Click 'Jump' to Restart", canvas.width / 2, canvas.height / 2 + 60);
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    function resetGame() {
+        isGameOver = false;
+        obstacles = [];
+        score = 0;
+        gameSpeed = 4;
+        frameCount = 0;
+        player.y = 450;
+        player.dy = 0;
+    }
+
+    loop();
+</script>
+
+</body>
+</html>
